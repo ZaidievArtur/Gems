@@ -1,47 +1,45 @@
 #include "Bonus.h"
 
-void Bonus::applyBonus(Tile grid[10][10], int i, int j, int& n, int ts) {
-    int meter = rand() % 100;
-    if (meter > 90) {
-        int randx = rand() % 4;
-        int randy = rand() % 4;
-        int randx2 = rand() % 4;
-        int randy2 = rand() % 4;
-        int prev = 0;
+namespace {
+    const int BONUS_TYPE_1 = 5;
+    const int BONUS_TYPE_2 = 6;
+    const int PROBABILITY_THRESHOLD_1 = 90;
+    const int PROBABILITY_THRESHOLD_2 = 95;
+    const int GRID_SIZE = 10;
+    const int MAX_RANDOM_POSITION = 4;
+    const int RANDOM_MATCH_COUNT = 5;
+}
 
-        if (meter > 95) {
-            prev = grid[i][j].kind;
-            grid[i][j].kind = 5;
-            grid[i][j].y = -ts * n++;
-            grid[i][j].match = 1;
-            if (randx + i <= 7) {
-                if (randy + j <= 7) grid[randx + i][randy + j].kind = prev;
-                else grid[randx + i][randy - j].kind = prev;
-            } else {
-                if (randy + j <= 7) grid[randx - i][randy + j].kind = prev;
-                else grid[randx - i][randy - j].kind = prev;
-            }
-            if (randx2 + i <= 7) {
-                if (randy2 + j <= 7) grid[randx2 + i][randy2 + j].kind = prev;
-                else grid[randx2 + i][randy2 - j].kind = prev;
-            } else {
-                if (randy2 + j <= 7) grid[randx2 - i][randy2 + j].kind = prev;
-                else grid[randx2 - i][randy2 - j].kind = prev;
-            }
-        } else {
-            grid[i][j].kind = 6;
-            grid[i][j].y = -ts * n++;
-            grid[i][j].match = 1;
+void Recolor::apply(Tile& tile, Tile grid[GRID_SIZE][GRID_SIZE]) {
+    int prev = tile.kind;
+    tile.kind = BONUS_TYPE_1;
+    tile.y = -ts;
+    tile.match = 1;
 
-            for (int k = 0; k < 5; ++k) {
-                int randx3 = rand() % 8;
-                int randy3 = rand() % 8;
-                grid[randx3][randy3].match = 1;
-            }
+    auto updateKind = [&](int dx, int dy) {
+        if (tile.row + dx < GRID_SIZE && tile.row + dx >= 0 && tile.col + dy < GRID_SIZE && tile.col + dy >= 0) {
+            grid[tile.row + dx][tile.col + dy].kind = prev;
         }
-    } else {
-        grid[i][j].kind = rand() % 5;
-        grid[i][j].y = -ts * n++;
-        grid[i][j].match = 0;
+    };
+
+    updateKind(rand() % MAX_RANDOM_POSITION, rand() % MAX_RANDOM_POSITION);
+    updateKind(rand() % MAX_RANDOM_POSITION, rand() % MAX_RANDOM_POSITION);
+}
+
+void Bomb::apply(Tile& tile, Tile grid[GRID_SIZE][GRID_SIZE]) {
+    tile.kind = BONUS_TYPE_2;
+    tile.y = -ts;
+    tile.match = 1;
+
+    for (int k = 0; k < RANDOM_MATCH_COUNT; ++k) {
+        int randx = rand() % (GRID_SIZE - 2);
+        int randy = rand() % (GRID_SIZE - 2);
+        grid[randx][randy].match = 1;
     }
+}
+
+void Default::apply(Tile& tile, Tile grid[GRID_SIZE][GRID_SIZE]) {
+    tile.kind = rand() % 5;
+    tile.y = -ts;
+    tile.match = 0;
 }

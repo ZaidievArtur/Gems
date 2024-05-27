@@ -20,8 +20,9 @@ private:
     void findMatches(int score);
     void moveTiles(int score);
     void updateGrid();
+    void processClick();
+    void checkNeighboring();
 
-    const int ts = 54; // tile size
     const sf::Vector2i offset = sf::Vector2i(48, 24);
 
     sf::RenderWindow window;

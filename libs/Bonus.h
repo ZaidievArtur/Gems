@@ -6,7 +6,23 @@
 
 class Bonus {
 public:
-    static void applyBonus(Tile grid[10][10], int i, int j, int& n, int ts);
+    virtual void apply(Tile& tile, Tile grid[10][10]) = 0;
+    virtual ~Bonus() = default;
+};
+
+class Recolor : public Bonus {
+public:
+    void apply(Tile& tile, Tile grid[10][10]) override;
+};
+
+class Bomb : public Bonus {
+public:
+    void apply(Tile& tile, Tile grid[10][10]) override;
+};
+
+class Default : public Bonus {
+public:
+    void apply(Tile& tile, Tile grid[10][10]) override;
 };
 
 #endif // BONUS_H

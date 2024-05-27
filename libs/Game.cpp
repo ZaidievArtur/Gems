@@ -4,6 +4,10 @@
 #include <cmath>
 #include <iostream>
 
+const int PROBABILITY_THRESHOLD_1 = 90;
+const int PROBABILITY_THRESHOLD_2 = 95;
+const int textureWidth = 49;
+
 Game::Game() :
         window(sf::VideoMode(740, 480), "Let's play!"),
         click(0), isSwap(false), isMoving(false) {
@@ -49,29 +53,41 @@ void Game::run() {
     }
 }
 
-void Game::handleEvents() {
-    sf::Event event{};
-    while (window.pollEvent(event)){
-        if (event.type == sf::Event::Closed) window.close();
-        if (event.key.code == sf::Mouse::Left){
-            if (!isSwap && !isMoving) click++;
-            pos = sf::Mouse::getPosition(window) - offset;
-        }
+void Game::checkNeighboring() {
+    if (abs(x - x0) + abs(y - y0) == 1) {
+        swap(grid[y0][x0], grid[y][x]);
+        isSwap = true;
+        click = 0;
+    } else {
+        click = 1;
     }
+}
 
-    if (click == 1){
+void Game::processClick() {
+    click++;
+    if (click == 1) {
         x0 = pos.x / ts + 1;
         y0 = pos.y / ts + 1;
-    }
-    if (click == 2){
+    } else if (click == 2) {
         x = pos.x / ts + 1;
         y = pos.y / ts + 1;
-        if (abs(x - x0) + abs(y - y0) == 1){ //Проверка на соседство
-            swap(grid[y0][x0], grid[y][x]);
-            isSwap = true;
-            click = 0;
+        checkNeighboring();
+        click = 0;
+    }
+}
+
+
+void Game::handleEvents() {
+    sf::Event event{};
+    while (window.pollEvent(event)) {
+        if (event.type == sf::Event::Closed) {
+            window.close();
+        } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            if (!isSwap && !isMoving) {
+                pos = sf::Mouse::getPosition(window) - offset;
+                processClick();
+            }
         }
-        else click = 1;
     }
 }
 
@@ -88,7 +104,7 @@ void Game::render() {
     for (int i = 1; i < 9; i++) {
         for (int j = 1; j < 9; j++) {
             Tile p = grid[i][j];
-            gems.setTextureRect(sf::IntRect(p.kind * 49, 0, 49, 49));
+            gems.setTextureRect(sf::IntRect(p.kind * textureWidth, 0, textureWidth, textureWidth));
             gems.setPosition(p.x, p.y);
             gems.move(offset.x - ts, offset.y - ts);
             window.draw(gems);
@@ -98,7 +114,7 @@ void Game::render() {
     window.display();
 }
 
-void Game:: swap(Tile p1, Tile p2){
+void Game::swap(Tile p1, Tile p2) {
     std::swap(p1.col, p2.col);
     std::swap(p1.row, p2.row);
 
@@ -116,7 +132,7 @@ void Game::findMatches(int score) {
             if (grid[i][j].kind == grid[i][j + 1].kind &&
                 grid[i][j].kind == grid[i][j - 1].kind) {
                 for (int n = -1; n <= 1; n++) grid[i][j + n].match++;
-                if (grid[i][j].match==1) {
+                if (grid[i][j].match == 1) {
                     grid[i][j + 1].match == 1;
                 }
             }
@@ -144,32 +160,43 @@ void Game::moveTiles(int score) {
             if (dx || dy) isMoving = true;
         }
     }
-    if (isSwap && !isMoving){//Если нет совпадений
+    if (isSwap && !isMoving) { // Если нет совпадений
         if (!score) swap(grid[y0][x0], grid[y][x]);
         isSwap = false;
     }
-
 }
 
 void Game::updateGrid() {
     if (!isMoving) {
-        for (int i = 8; i > 0; i--) {
-            for (int j = 1; j < 9; j++) {
-                if (grid[i][j].match) {
-                    for (int n = i; n > 0; n--) {
-                        if (!grid[n][j].match) {
-                            swap(grid[n][j], grid[i][j]);
-                            break;
-                        }
+        for (int j = 1; j < 9; j++) {
+            int emptyRow = 8;
+            for (int i = 8; i > 0; i--) {
+                if (!grid[i][j].match) {
+                    while (emptyRow > 0 && grid[emptyRow][j].match) {
+                        emptyRow--;
+                    }
+                    if (emptyRow > 0) {
+                        swap(grid[i][j], grid[emptyRow][j]);
+                        emptyRow--;
                     }
                 }
             }
         }
 
-        for (int i = 9, n = 0; i > 0; i--) {
+        for (int i = 9; i > 0; i--) {
             for (int j = 1; j < 9; j++) {
                 if (grid[i][j].match) {
-                    Bonus::applyBonus(grid, i, j, n, ts);
+                    Bonus* bonus;
+                    int meter = rand() % 100;
+                    if (meter > PROBABILITY_THRESHOLD_2) {
+                        bonus = new Recolor();
+                    } else if (meter > PROBABILITY_THRESHOLD_1) {
+                        bonus = new Bomb();
+                    } else {
+                        bonus = new Default();
+                    }
+                    bonus->apply(grid[i][j], grid);
+                    delete bonus;
                 }
             }
         }
